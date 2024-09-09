@@ -1,0 +1,42 @@
+---
+- name: Deploy Apache2 webserver on VM1 and VM2
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install Apache2
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+
+    - name: Ensure Apache2 is running and enabled
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Change Apache2 default port to 8080
+      lineinfile:
+        path: /etc/apache2/ports.conf
+        regexp: '^Listen 80'
+        line: 'Listen 8080'
+
+    - name: Update index.html with a custom message
+      copy:
+        content: |
+          <html>
+          <head><title>Hello</title></head>
+          <body><h1>Hello World from SJSU-{{ inventory_hostname == 'ansible-vm1' | ternary('1', '2') }}</h1></body>
+          </html>
+        dest: /var/www/html/index.html
+
+    - name: Open port 8080 in the firewall (for Ubuntu's UFW)
+      ufw:
+        rule: allow
+        port: '8080'
+        proto: tcp
+
+    - name: Restart Apache2 to apply changes
+      service:
+        name: apache2
+        state: restarted
